@@ -1,4 +1,4 @@
-## How to prepare primer (Assay) plate for wafergen
+## How to prepare primer (Assay) plate for wafergen by Robot
 Written by Lanying Ma, edited by Jin Choi
 ## Background:
 This SOP is trying to walk you through how to prepare primer plate with Robot for Wafergen run.  As we have 8 plates of Bob primers about antibiotic resistant genes (384 primers with F and R primers), it would be too easy to make mistakes manually preparing the primer plates.  Thus, we try to automate it by Robot.  All the python codes were written by Jin in this SOP.  If you have any questions on it, please talk to him.  All files needed in this SOP were in germs-lab github. https://github.com/germs-lab/wafergen
