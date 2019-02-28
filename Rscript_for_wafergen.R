@@ -37,8 +37,13 @@ add_to_meta <- function(merged_meta_chip, chip, target, meta, meta_std, name_tar
 	eff <- 100*((10^(-1/coef))-1)
 	inverse.lm <- lm(count ~ ct)
 	
-	merged_meta$mean_target<- rowMeans(merged_meta[,target], na.rm=T)
-	val = merged_meta$"mean_target"
+	if (length(target) > 1){
+		merged_meta$mean_target<- rowMeans(merged_meta[,target], na.rm=T)
+		val = merged_meta$"mean_target"
+	}else{
+		val = merged_meta[,target]
+	}
+	
 	merged_meta$temp<- 10^predict(inverse.lm ,data.frame(ct = val), interval = "predict")[,1]
 	names(merged_meta)[ncol(merged_meta)] <- paste0("cal_", name_target)
 	names(merged_meta)[ncol(merged_meta)-1] <- paste0("mean_", name_target)
