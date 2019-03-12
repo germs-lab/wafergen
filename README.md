@@ -17,9 +17,20 @@ https://github.com/germs-lab/wafergen/blob/master/Rscript_for_wafergen.R
 To Run,
 1. Open R
 
-2. Change path
+2. Change path of these three
+```
+#read data 
+dat <- read.table("~/Box Sync/2018/6June/NPB/Jin051518-96632/Jin061518.txt", sep="\t", header=T)[,c("Assay","Sample","Ct")]
+
+#get sample info
+meta <- read.csv("~/Box Sync/2018/6June/NPB/meta_fix.csv")
+
+#convert 16S Ct into count
+meta_std <- read.csv("~/Box Sync/2018/11November/NPB/meta_standard.csv")
+```
 
 3. Run R
+
 
 
 
