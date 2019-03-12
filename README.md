@@ -1,4 +1,5 @@
-# GERMSLab Wafergen SOP
+# Python code for generating CSV file for robot
+For SOP, please see here https://github.com/germs-lab/SOPs/blob/master/Wafergen.md
 
 ## Before Run
 
