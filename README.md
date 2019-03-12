@@ -10,7 +10,8 @@
 
 [Jin can you put an example here]
 
-3. Design your plate layout. Name this file layout_yourname_date. [Lanying can you put instructions here as needed]
+3. Design your plate layout. Name this file layout_yourname_date. Lanying has wrote a SOP on how to design your plate layout with other logistics.  Please refer here.https://github.com/germs-lab/SOPs/blob/master/Wafergen.md
+
 
 4. Make a folder in the Box Drive Folder - GERMS-Wafergen [https://iastate.box.com/s/g0tt6382aagmd3eut4at2bgljhipi53g] to place the three files above in.  Name that folder as wafergen_yourname_date.
 
