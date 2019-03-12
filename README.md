@@ -1,6 +1,12 @@
 # Python code for generating CSV file for robot
 For SOP, please see here https://github.com/germs-lab/SOPs/blob/master/Wafergen.md
 
+## If you use Bob's primer use command like this
+```
+python prepare_bob_primer_144S_36A.py lan_list_target.txt bob_primer_plate.clean.tsv
+```
+
+
 ## Before Run
 
 1. Create a file of metadata for your samples.  It should contain a unique sample identifier and associated metadata for each sample.  An example is shown below.
