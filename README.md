@@ -31,6 +31,8 @@ meta_std <- read.csv("~/Box Sync/2018/11November/NPB/meta_standard.csv")
 
 3. Run R
 
+Detaled tutorial
+http://germslab.org/wafergen/
 
 
 
