@@ -1,0 +1,17 @@
+---
+title: "wafergen"
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+---
+
+
+# Wafergen analysis
+This site shows how to analyze wafergen data
+
+## wafergen in R
+analyse data in R
+
+## others
+others
