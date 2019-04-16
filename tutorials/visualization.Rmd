@@ -1,0 +1,154 @@
+---
+title: "wafergen"
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+---
+
+
+# Wafergen analysis
+This site shows how to analyze wafergen data
+
+### Load Library
+```{r}
+library(reshape2)
+library(ggplot2)
+library(ggpubr)
+```
+
+### Read data
+```{r}
+#read data 
+chip1 <- read.table("../data/Lanying103018_Chip1.txt", sep="\t", header=T)[,c("Assay","Sample","Ct")]
+chip2 <- read.table("../data/Lanying103018_Chip2.txt", sep="\t", header=T)[,c("Assay","Sample","Ct")]
+dat <- rbind(chip1,chip2)
+#get sample info
+meta <- read.csv("../data/meta_data.csv")
+
+#standard
+meta_std <- read.csv("../data/meta_standard.csv")
+```
+
+
+### Read function
+```{r}
+#########################
+# function
+########################
+add_to_meta <- function(merged_meta_chip, chip, target, meta, meta_std, name_target, sample_id){
+	sub <- subset(chip, Assay %in% target)
+	casted <- dcast(sub, Sample~Assay, fun=mean, value.var = "Ct", na.rm=T)
+	merged_meta <- merge(merged_meta_chip, casted, by.x = sample_id, by.y="Sample")
+	meta_sub <- subset(meta_std, Assay %in% name_target)
+	data_sub <- subset(sub, Sample %in% meta_sub$Sample)
+	merged_std <- merge(data_sub, meta_sub, by.x = "Sample", by.y = "Sample", all.x=T)
+	merged_std_no_NA <- subset(merged_std, Ct != "NA")
+	quality_filtered <- subset(merged_std_no_NA, count > 10)
+	ct <- quality_filtered$Ct 
+	count <-  log10(quality_filtered$count+1)
+	lm.r <- lm(ct ~ count)
+	coef <- coef(lm.r)[2]
+	eff <- 100*((10^(-1/coef))-1)
+	inverse.lm <- lm(count ~ ct)
+	
+	if (length(target) > 1){
+		merged_meta$mean_target<- rowMeans(merged_meta[,target], na.rm=T)
+		val = merged_meta$"mean_target"
+	}else{
+		val = merged_meta[,name_target]
+	}
+	
+	merged_meta$temp<- 10^predict(inverse.lm ,data.frame(ct = val), interval = "predict")[,1]
+	names(merged_meta)[ncol(merged_meta)] <- paste0("cal_", name_target)
+	names(merged_meta)[ncol(merged_meta)-1] <- paste0("mean_", name_target)
+	return(merged_meta)
+}
+```
+
+### Run functions with four target genes
+```{r}
+###############
+# Add 16S rRNA count
+###############
+name_target = "16s"
+sample_id = "sample"
+target <- c("16s")
+merged_meta <- add_to_meta(meta, dat, target, meta, meta_std, name_target, sample_id)
+
+#########################
+# Add ermB count
+########################
+name_target = "erm B"
+sample_id = "sample"
+target <- c("erm B")
+merged_meta <- add_to_meta(merged_meta, dat, target, meta, meta_std, name_target, sample_id)
+
+#########################
+# Add ermF count
+########################
+name_target = "erm F"
+sample_id = "sample"
+target <- c("erm F")
+merged_meta <- add_to_meta(merged_meta, dat, target, meta, meta_std, name_target, sample_id)
+
+#########################
+# Add tetM count
+########################
+name_target = "tet M"
+sample_id = "sample"
+target <- c("tet M")
+merged_meta <- add_to_meta(merged_meta, dat, target, meta, meta_std, name_target, sample_id)
+```
+
+
+### No till VS chisel plow
+```{R}
+melted <- melt(merged_meta[,c("Year", "Week","Manure.Treatment", "Tillage","cal_16s","cal_erm B","cal_erm F","cal_tet M")], id = c("Year", "Week","Manure.Treatment", "Tillage"))
+sub <- subset(melted, Tillage != "")
+levels(melted$variable) <- c("16S","erm B","erm F","tet M")
+ggplot(sub ,(aes(x=as.factor(Week), y=value)))+geom_boxplot()+facet_grid(Tillage~variable)+scale_y_continuous(trans='log10')+theme_bw()+theme(axis.text.x = element_text(angle=90))+labs(x="Week",y="Log 10 gene copies")
+```
+
+
+
+
+```{R}
+sub <- subset(sub, variable != "16S")
+y = subset(sub, Tillage=="NT")$value
+x = subset(sub, Tillage=="CP")$value
+t.test(x,y) #p-value = 0.3034
+```
+```{R}
+compare_means(value ~ Tillage, data=sub)
+my_comparisons <- list( c("NT", "CP"))
+ggboxplot(sub, x="Tillage", y="value")+stat_compare_means(comparisons = my_comparisons)+scale_y_continuous(trans='log10')+labs(x="Manure Treatment",y="Log 10 gene copies")+stat_compare_means(label.y = 3.5)
+```
+
+
+### Manure treatment
+```{R}
+ggplot(melted,(aes(x=as.factor(Week), y=value)))+geom_boxplot()+facet_grid(Manure.Treatment~variable)+scale_y_continuous(trans='log10')+theme_bw()+theme(axis.text.x = element_text(angle=90))+labs(x="Week",y="Log 10 gene copies")
+```
+
+```{R}
+sub <- subset(melted, variable != "16S")
+
+y = subset(sub, Manure.Treatment == "Control")$value
+x = subset(sub, Manure.Treatment == "EFM")$value #p-value = 0.0643
+t.test(x,y)
+x = subset(sub, Manure.Treatment == "LFM")$value #p-value = 0.0003764
+t.test(x,y)
+x = subset(sub, Manure.Treatment == "SM")$value #p-value = 0.004758
+t.test(x,y)
+```
+```{R}
+compare_means(value ~ Manure.Treatment, data=sub)
+my_comparisons <- list( c("Control", "EFM"), c("Control", "LFM"), c("Control", "SM"))
+ggboxplot(sub, x="Manure.Treatment", y="value")+stat_compare_means(comparisons = my_comparisons)+scale_y_continuous(trans='log10')+labs(x="Manure Treatment",y="Log 10 gene copies")+stat_compare_means(label.y = 6.5)
+```
+
+
+
+
+

@@ -8,10 +8,7 @@ output:
 
 
 # Wafergen analysis
-This site shows how to analyze wafergen data
 
-## wafergen in R
-analyse data in R
-
-## others
-others
+### [**qPCR analysis using R**](http://germslab.org/wafergen/wafergenR.html)
+### [**Automation using function**](http://germslab.org/wafergen/automation_using_function.html)
+### [**Visualization**](http://germslab.org/wafergen/visualization.html)

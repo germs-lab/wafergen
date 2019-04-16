@@ -389,6 +389,12 @@ div.tocify {
 <li>
   <a href="wafergenR.html">wafergen in R</a>
 </li>
+<li>
+  <a href="automation_using_function.html">Automation using function</a>
+</li>
+<li>
+  <a href="visualization.html">Visualization</a>
+</li>
       </ul>
       <ul class="nav navbar-nav navbar-right">
         
@@ -408,10 +414,7 @@ div.tocify {
 
 <div id="wafergen-analysis" class="section level1">
 <h1>Wafergen analysis</h1>
-<p>This tutorial shows how to analyze wafergen data. Wafergen data is nothing but bigger size of qPCR. So, let’s start with qPCR data analisis.</p>
-<div id="qpcr-data-analysis-in-r" class="section level2">
-<h2>qPCR data analysis in R</h2>
-<p>This section will show analyse qPCR data in R. It is environmental samples in the tutorial. Let’s start with house-keeping gene(16S rRNA).</p>
+<p>This site shows how to analyze wafergen data</p>
 <div id="load-library" class="section level3">
 <h3>Load Library</h3>
 <pre class="r"><code>library(reshape2)
@@ -421,94 +424,82 @@ library(ggpubr)</code></pre>
 </div>
 <div id="read-data" class="section level3">
 <h3>Read data</h3>
-<p>First, let’s read data that we need. It is two runs (chip1 and chip2) with same primer sets. Lanying103018_Chip1.txt and Lanying103018_Chip2.txt are the data files from wafergen run. Also, we need two more files, 1) metadata and 2) information of standard. First, it is user’s responsibility to make metadata. It contains description of samples. meta_data.csv is the example of metadata. In this example, there are two years (2016 and 2017), 24 weeks(0 to 23), four manure treatment (LFM, EFM, SM, Control), and Two tillage(CP and NT but only EFM has this treatment). Second, meta_standard.csv contains which standard was used, which primer should be used and expected count. There are four assay(16S, ermB, ermF, tetM) were used, but let’s start with 16S and ermB.</p>
 <pre class="r"><code>#read data 
-chip1 &lt;- read.table(&quot;../data/Lanying103018_Chip1.txt&quot;, sep=&quot;\t&quot;, header=T)[,c(&quot;Assay&quot;,&quot;Sample&quot;,&quot;Ct&quot;)]
-chip2 &lt;- read.table(&quot;../data/Lanying103018_Chip2.txt&quot;, sep=&quot;\t&quot;, header=T)[,c(&quot;Assay&quot;,&quot;Sample&quot;,&quot;Ct&quot;)]
-
+chip1 &lt;- read.table(&quot;../data/Jin061518.txt&quot;, sep=&quot;\t&quot;, header=T)[,c(&quot;Assay&quot;,&quot;Sample&quot;,&quot;Ct&quot;)]
+dat &lt;- chip1
 #get sample info
-meta &lt;- read.csv(&quot;../data/meta_data.csv&quot;)
+meta &lt;- read.csv(&quot;../data/meta_NPB.csv&quot;)
 
 #standard
-meta_std &lt;- read.csv(&quot;../data/meta_standard.csv&quot;)</code></pre>
-<div id="merge-two-chip-into-one-data-table" class="section level4">
-<h4>merge two chip into one data table</h4>
-<p>Let’s merge two chip into one data table since we have two run.</p>
-<pre class="r"><code>dat &lt;- rbind(chip1,chip2)</code></pre>
+meta_std &lt;- read.csv(&quot;../data/meta_standard_NPB.csv&quot;)</code></pre>
 </div>
+<div id="read-function" class="section level3">
+<h3>Read function</h3>
+<pre class="r"><code>#########################
+# function
+########################
+add_to_meta &lt;- function(merged_meta_chip, chip, target, meta, meta_std, name_target, sample_id){
+    sub &lt;- subset(chip, Assay %in% target)
+    casted &lt;- dcast(sub, Sample~Assay, fun=mean, value.var = &quot;Ct&quot;)
+    merged_meta &lt;- merge(merged_meta_chip, casted, by.x = sample_id, by.y=&quot;Sample&quot;)
+    meta_sub &lt;- subset(meta_std, Assay %in% name_target)
+    data_sub &lt;- subset(sub, Sample %in% meta_sub$Sample)
+    merged_std &lt;- merge(data_sub, meta_sub, by.x = &quot;Sample&quot;, by.y = &quot;Sample&quot;, all.x=T)
+    merged_std_no_NA &lt;- subset(merged_std, Ct != &quot;NA&quot;)
+    
+    ct &lt;- merged_std_no_NA$Ct 
+    count &lt;-  log10(merged_std_no_NA$count+1)
+    lm.r &lt;- lm(ct ~ count)
+    coef &lt;- coef(lm.r)[2]
+    eff &lt;- 100*((10^(-1/coef))-1)
+    inverse.lm &lt;- lm(count ~ ct)
+    
+    if (length(target) &gt; 1){
+        merged_meta$mean_target&lt;- rowMeans(merged_meta[,target], na.rm=T)
+        val = merged_meta$&quot;mean_target&quot;
+    }else{
+        val = merged_meta[,target]
+    }
+    
+    merged_meta$temp&lt;- 10^predict(inverse.lm ,data.frame(ct = val), interval = &quot;predict&quot;)[,1]
+    names(merged_meta)[ncol(merged_meta)] &lt;- paste0(&quot;cal_&quot;, name_target)
+    names(merged_meta)[ncol(merged_meta)-1] &lt;- paste0(&quot;mean_&quot;, name_target)
+    return(merged_meta)
+}</code></pre>
 </div>
-<div id="set-parameters" class="section level3">
-<h3>set parameters</h3>
-<p>Let’s start with 16S first. Set target name “16s”. This name sould be matched with the name in meta_standard.csv and data files(Lanying103018_Chip1.txt and Lanying103018_Chip2.txt). Also, we assign column name of sample id that used in the metadata (meta_data.csv) in case different user name it different way. In our case our column name that contains sample name is “sample”.</p>
-<pre class="r"><code>name_target = &quot;16s&quot;
-sample_id = &quot;sample&quot;</code></pre>
-<div id="standard-curve-for-16s" class="section level4">
-<h4>standard curve for 16S</h4>
-<p>First, we need standard curve. To analyze 16S, we subset the data only 16S primer was used.</p>
-<pre class="r"><code>sub &lt;- subset(dat, Assay %in% name_target)</code></pre>
-<p>This is information of standard with only 16S rRNA gene</p>
-<pre class="r"><code>meta_sub &lt;- subset(meta_std, Assay %in% name_target)</code></pre>
-<p>Another sub for only standard.</p>
-<pre class="r"><code>data_sub &lt;- subset(sub, Sample %in% meta_sub$Sample)</code></pre>
-<p>add expected count for each standard samples</p>
-<pre class="r"><code>merged_std &lt;- merge(data_sub, meta_sub, by.x = &quot;Sample&quot;, by.y = &quot;Sample&quot;, all.x=T)</code></pre>
-<p>Remove NA</p>
-<pre class="r"><code>merged_std_no_NA &lt;- subset(merged_std, Ct != &quot;NA&quot;)</code></pre>
-<p>This is Ct values for each standard</p>
-<pre class="r"><code>ct &lt;- merged_std_no_NA$Ct </code></pre>
-<p>This is log10 based expected count</p>
-<pre class="r"><code>count &lt;-  log10(merged_std_no_NA$count+1)</code></pre>
-<p>Let’s plot it</p>
-<pre class="r"><code>table_for_ggplot &lt;- data.frame(ct = ct, count = count)
-ggplot(table_for_ggplot, aes(x= count, y=ct))+geom_point()+geom_smooth(method=&#39;lm&#39;)+labs(x=&quot;Count (log10)&quot;, y = &quot;Ct&quot;)</code></pre>
-<p><img src="wafergenR_files/figure-html/unnamed-chunk-12-1.png" width="672" /></p>
-<p>It looks good. What is the R square value?</p>
-<pre class="r"><code>lm.r &lt;- lm(ct ~ count)
+<div id="run-functions-with-four-target-genes" class="section level3">
+<h3>Run functions with four target genes</h3>
+<pre class="r"><code>###############
+# Add 16S rRNA count
+###############
+name_target = &quot;16s&quot;
+sample_id = &quot;sample&quot;
+target &lt;- c(&quot;16sTom1&quot;,&quot;16sTom2&quot;,&quot;16sTom3&quot;)
+merged_meta &lt;- add_to_meta(meta, dat, target, meta, meta_std, name_target, sample_id)
 
-summary(lm.r)$r.squared</code></pre>
-<pre><code>## [1] 0.9931072</code></pre>
-<p>R square looks good. How about efficiency?</p>
-<pre class="r"><code>coef &lt;- coef(lm.r)[2]
-eff &lt;- 100*((10^(-1/coef))-1)
-(eff)</code></pre>
-<pre><code>##    count 
-## 83.56041</code></pre>
-<p>Efficiency dose not looks great. You can see the data point (count=0) is off. It is common data points with low count (or zero count) are not very good align with. Maybe we can remove some point with low count.</p>
-<pre class="r"><code>quality_filtered &lt;- subset(merged_std_no_NA, count &gt; 10)</code></pre>
-<p>Let’s calculate R square and efficiency again.</p>
-<pre class="r"><code>ct &lt;- quality_filtered$Ct 
-count &lt;-  log10(quality_filtered$count+1)
-lm.r &lt;- lm(ct ~ count)
-summary(lm.r)$r.squared</code></pre>
-<pre><code>## [1] 0.9975204</code></pre>
-<pre class="r"><code>coef &lt;- coef(lm.r)[2]
-eff &lt;- 100*((10^(-1/coef))-1)
-(eff)</code></pre>
-<pre><code>##    count 
-## 87.57528</code></pre>
-<p>R square and efficiency looks better. and plot it.</p>
-<pre class="r"><code>table_for_ggplot &lt;- data.frame(ct = ct, count = count)
-ggplot(table_for_ggplot, aes(x= count, y=ct))+geom_point()+geom_smooth(method=&#39;lm&#39;)+labs(x=&quot;Count (log10)&quot;, y = &quot;Ct&quot;)</code></pre>
-<p><img src="wafergenR_files/figure-html/unnamed-chunk-17-1.png" width="672" /></p>
-</div>
-</div>
-<div id="calculate-count-using-standard-curve" class="section level3">
-<h3>Calculate count using standard curve</h3>
-<p>We are going to use data table only countains with 16S assay with it. Make mean since we run it triplicate.</p>
-<pre class="r"><code>casted &lt;- dcast(sub, Sample~Assay, fun=mean, value.var = &quot;Ct&quot;)</code></pre>
-<p>To understand which sample is which, add metadata.</p>
-<pre class="r"><code>merged_meta &lt;- merge(meta, casted, by.x = sample_id, by.y=&quot;Sample&quot;)</code></pre>
-<p>We are going to use linear model regression, but this time inverse x and y axis</p>
-<pre class="r"><code>inverse.lm &lt;- lm(count ~ ct)</code></pre>
-<p>Get Ct values</p>
-<pre class="r"><code>val = merged_meta[,name_target]</code></pre>
-<p>Using linear model, calculate count. then, save into column name “temp”</p>
-<pre class="r"><code>merged_meta$temp&lt;- 10^predict(inverse.lm ,data.frame(ct = val), interval = &quot;predict&quot;)[,1]</code></pre>
-<p>Change column name meaningful</p>
-<pre class="r"><code>names(merged_meta)[ncol(merged_meta)] &lt;- paste0(&quot;cal_&quot;, name_target)
-names(merged_meta)[ncol(merged_meta)-1] &lt;- paste0(&quot;mean_&quot;, name_target)</code></pre>
-<p>We can repeat this process into other target</p>
-</div>
+#########################
+# Add ermB count
+########################
+name_target = &quot;ermb&quot;
+sample_id = &quot;sample&quot;
+target &lt;- c(&quot;ermbEdBob1&quot;,&quot;ermbEdBob2&quot;,&quot;ermbEdBob3&quot;)
+merged_meta &lt;- add_to_meta(merged_meta, dat, target, meta, meta_std, name_target, sample_id)
+
+#########################
+# Add ermF count
+########################
+name_target = &quot;ermf&quot;
+sample_id = &quot;sample&quot;
+target &lt;- c(&quot;ermfEdBob1&quot;,&quot;ermfEdBob2&quot;,&quot;ermfEdBob3&quot;)
+merged_meta &lt;- add_to_meta(merged_meta, dat, target, meta, meta_std, name_target, sample_id)
+
+#########################
+# Add tetM count
+########################
+name_target = &quot;tetm&quot;
+sample_id = &quot;sample&quot;
+target &lt;- c(&quot;tetmBob1&quot;,&quot;tetmBob2&quot;,&quot;tetmBob3&quot;)
+merged_meta &lt;- add_to_meta(merged_meta, dat, target, meta, meta_std, name_target, sample_id)</code></pre>
 </div>
 </div>
 

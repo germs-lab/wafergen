@@ -389,6 +389,12 @@ div.tocify {
 <li>
   <a href="wafergenR.html">wafergen in R</a>
 </li>
+<li>
+  <a href="automation_using_function.html">Automation using function</a>
+</li>
+<li>
+  <a href="visualization.html">Visualization</a>
+</li>
       </ul>
       <ul class="nav navbar-nav navbar-right">
         
@@ -408,10 +414,7 @@ div.tocify {
 
 <div id="wafergen-analysis" class="section level1">
 <h1>Wafergen analysis</h1>
-<p>This tutorial shows how to analyze wafergen data. Wafergen data is nothing but bigger size of qPCR. So, let’s start with qPCR data analisis.</p>
-<div id="qpcr-data-analysis-in-r" class="section level2">
-<h2>qPCR data analysis in R</h2>
-<p>This section will show analyse qPCR data in R. It is environmental samples in the tutorial. Let’s start with house-keeping gene(16S rRNA).</p>
+<p>This site shows how to analyze wafergen data</p>
 <div id="load-library" class="section level3">
 <h3>Load Library</h3>
 <pre class="r"><code>library(reshape2)
@@ -421,94 +424,184 @@ library(ggpubr)</code></pre>
 </div>
 <div id="read-data" class="section level3">
 <h3>Read data</h3>
-<p>First, let’s read data that we need. It is two runs (chip1 and chip2) with same primer sets. Lanying103018_Chip1.txt and Lanying103018_Chip2.txt are the data files from wafergen run. Also, we need two more files, 1) metadata and 2) information of standard. First, it is user’s responsibility to make metadata. It contains description of samples. meta_data.csv is the example of metadata. In this example, there are two years (2016 and 2017), 24 weeks(0 to 23), four manure treatment (LFM, EFM, SM, Control), and Two tillage(CP and NT but only EFM has this treatment). Second, meta_standard.csv contains which standard was used, which primer should be used and expected count. There are four assay(16S, ermB, ermF, tetM) were used, but let’s start with 16S and ermB.</p>
 <pre class="r"><code>#read data 
 chip1 &lt;- read.table(&quot;../data/Lanying103018_Chip1.txt&quot;, sep=&quot;\t&quot;, header=T)[,c(&quot;Assay&quot;,&quot;Sample&quot;,&quot;Ct&quot;)]
 chip2 &lt;- read.table(&quot;../data/Lanying103018_Chip2.txt&quot;, sep=&quot;\t&quot;, header=T)[,c(&quot;Assay&quot;,&quot;Sample&quot;,&quot;Ct&quot;)]
-
+dat &lt;- rbind(chip1,chip2)
 #get sample info
 meta &lt;- read.csv(&quot;../data/meta_data.csv&quot;)
 
 #standard
 meta_std &lt;- read.csv(&quot;../data/meta_standard.csv&quot;)</code></pre>
-<div id="merge-two-chip-into-one-data-table" class="section level4">
-<h4>merge two chip into one data table</h4>
-<p>Let’s merge two chip into one data table since we have two run.</p>
-<pre class="r"><code>dat &lt;- rbind(chip1,chip2)</code></pre>
 </div>
+<div id="read-function" class="section level3">
+<h3>Read function</h3>
+<pre class="r"><code>#########################
+# function
+########################
+add_to_meta &lt;- function(merged_meta_chip, chip, target, meta, meta_std, name_target, sample_id){
+    sub &lt;- subset(chip, Assay %in% target)
+    casted &lt;- dcast(sub, Sample~Assay, fun=mean, value.var = &quot;Ct&quot;, na.rm=T)
+    merged_meta &lt;- merge(merged_meta_chip, casted, by.x = sample_id, by.y=&quot;Sample&quot;)
+    meta_sub &lt;- subset(meta_std, Assay %in% name_target)
+    data_sub &lt;- subset(sub, Sample %in% meta_sub$Sample)
+    merged_std &lt;- merge(data_sub, meta_sub, by.x = &quot;Sample&quot;, by.y = &quot;Sample&quot;, all.x=T)
+    merged_std_no_NA &lt;- subset(merged_std, Ct != &quot;NA&quot;)
+    quality_filtered &lt;- subset(merged_std_no_NA, count &gt; 10)
+    ct &lt;- quality_filtered$Ct 
+    count &lt;-  log10(quality_filtered$count+1)
+    lm.r &lt;- lm(ct ~ count)
+    coef &lt;- coef(lm.r)[2]
+    eff &lt;- 100*((10^(-1/coef))-1)
+    inverse.lm &lt;- lm(count ~ ct)
+    
+    if (length(target) &gt; 1){
+        merged_meta$mean_target&lt;- rowMeans(merged_meta[,target], na.rm=T)
+        val = merged_meta$&quot;mean_target&quot;
+    }else{
+        val = merged_meta[,name_target]
+    }
+    
+    merged_meta$temp&lt;- 10^predict(inverse.lm ,data.frame(ct = val), interval = &quot;predict&quot;)[,1]
+    names(merged_meta)[ncol(merged_meta)] &lt;- paste0(&quot;cal_&quot;, name_target)
+    names(merged_meta)[ncol(merged_meta)-1] &lt;- paste0(&quot;mean_&quot;, name_target)
+    return(merged_meta)
+}</code></pre>
 </div>
-<div id="set-parameters" class="section level3">
-<h3>set parameters</h3>
-<p>Let’s start with 16S first. Set target name “16s”. This name sould be matched with the name in meta_standard.csv and data files(Lanying103018_Chip1.txt and Lanying103018_Chip2.txt). Also, we assign column name of sample id that used in the metadata (meta_data.csv) in case different user name it different way. In our case our column name that contains sample name is “sample”.</p>
-<pre class="r"><code>name_target = &quot;16s&quot;
-sample_id = &quot;sample&quot;</code></pre>
-<div id="standard-curve-for-16s" class="section level4">
-<h4>standard curve for 16S</h4>
-<p>First, we need standard curve. To analyze 16S, we subset the data only 16S primer was used.</p>
-<pre class="r"><code>sub &lt;- subset(dat, Assay %in% name_target)</code></pre>
-<p>This is information of standard with only 16S rRNA gene</p>
-<pre class="r"><code>meta_sub &lt;- subset(meta_std, Assay %in% name_target)</code></pre>
-<p>Another sub for only standard.</p>
-<pre class="r"><code>data_sub &lt;- subset(sub, Sample %in% meta_sub$Sample)</code></pre>
-<p>add expected count for each standard samples</p>
-<pre class="r"><code>merged_std &lt;- merge(data_sub, meta_sub, by.x = &quot;Sample&quot;, by.y = &quot;Sample&quot;, all.x=T)</code></pre>
-<p>Remove NA</p>
-<pre class="r"><code>merged_std_no_NA &lt;- subset(merged_std, Ct != &quot;NA&quot;)</code></pre>
-<p>This is Ct values for each standard</p>
-<pre class="r"><code>ct &lt;- merged_std_no_NA$Ct </code></pre>
-<p>This is log10 based expected count</p>
-<pre class="r"><code>count &lt;-  log10(merged_std_no_NA$count+1)</code></pre>
-<p>Let’s plot it</p>
-<pre class="r"><code>table_for_ggplot &lt;- data.frame(ct = ct, count = count)
-ggplot(table_for_ggplot, aes(x= count, y=ct))+geom_point()+geom_smooth(method=&#39;lm&#39;)+labs(x=&quot;Count (log10)&quot;, y = &quot;Ct&quot;)</code></pre>
-<p><img src="wafergenR_files/figure-html/unnamed-chunk-12-1.png" width="672" /></p>
-<p>It looks good. What is the R square value?</p>
-<pre class="r"><code>lm.r &lt;- lm(ct ~ count)
+<div id="run-functions-with-four-target-genes" class="section level3">
+<h3>Run functions with four target genes</h3>
+<pre class="r"><code>###############
+# Add 16S rRNA count
+###############
+name_target = &quot;16s&quot;
+sample_id = &quot;sample&quot;
+target &lt;- c(&quot;16s&quot;)
+merged_meta &lt;- add_to_meta(meta, dat, target, meta, meta_std, name_target, sample_id)
 
-summary(lm.r)$r.squared</code></pre>
-<pre><code>## [1] 0.9931072</code></pre>
-<p>R square looks good. How about efficiency?</p>
-<pre class="r"><code>coef &lt;- coef(lm.r)[2]
-eff &lt;- 100*((10^(-1/coef))-1)
-(eff)</code></pre>
-<pre><code>##    count 
-## 83.56041</code></pre>
-<p>Efficiency dose not looks great. You can see the data point (count=0) is off. It is common data points with low count (or zero count) are not very good align with. Maybe we can remove some point with low count.</p>
-<pre class="r"><code>quality_filtered &lt;- subset(merged_std_no_NA, count &gt; 10)</code></pre>
-<p>Let’s calculate R square and efficiency again.</p>
-<pre class="r"><code>ct &lt;- quality_filtered$Ct 
-count &lt;-  log10(quality_filtered$count+1)
-lm.r &lt;- lm(ct ~ count)
-summary(lm.r)$r.squared</code></pre>
-<pre><code>## [1] 0.9975204</code></pre>
-<pre class="r"><code>coef &lt;- coef(lm.r)[2]
-eff &lt;- 100*((10^(-1/coef))-1)
-(eff)</code></pre>
-<pre><code>##    count 
-## 87.57528</code></pre>
-<p>R square and efficiency looks better. and plot it.</p>
-<pre class="r"><code>table_for_ggplot &lt;- data.frame(ct = ct, count = count)
-ggplot(table_for_ggplot, aes(x= count, y=ct))+geom_point()+geom_smooth(method=&#39;lm&#39;)+labs(x=&quot;Count (log10)&quot;, y = &quot;Ct&quot;)</code></pre>
-<p><img src="wafergenR_files/figure-html/unnamed-chunk-17-1.png" width="672" /></p>
+#########################
+# Add ermB count
+########################
+name_target = &quot;erm B&quot;
+sample_id = &quot;sample&quot;
+target &lt;- c(&quot;erm B&quot;)
+merged_meta &lt;- add_to_meta(merged_meta, dat, target, meta, meta_std, name_target, sample_id)
+
+#########################
+# Add ermF count
+########################
+name_target = &quot;erm F&quot;
+sample_id = &quot;sample&quot;
+target &lt;- c(&quot;erm F&quot;)
+merged_meta &lt;- add_to_meta(merged_meta, dat, target, meta, meta_std, name_target, sample_id)
+
+#########################
+# Add tetM count
+########################
+name_target = &quot;tet M&quot;
+sample_id = &quot;sample&quot;
+target &lt;- c(&quot;tet M&quot;)
+merged_meta &lt;- add_to_meta(merged_meta, dat, target, meta, meta_std, name_target, sample_id)</code></pre>
 </div>
+<div id="no-till-vs-chisel-plow" class="section level3">
+<h3>No till VS chisel plow</h3>
+<pre class="r"><code>melted &lt;- melt(merged_meta[,c(&quot;Year&quot;, &quot;Week&quot;,&quot;Manure.Treatment&quot;, &quot;Tillage&quot;,&quot;cal_16s&quot;,&quot;cal_erm B&quot;,&quot;cal_erm F&quot;,&quot;cal_tet M&quot;)], id = c(&quot;Year&quot;, &quot;Week&quot;,&quot;Manure.Treatment&quot;, &quot;Tillage&quot;))
+sub &lt;- subset(melted, Tillage != &quot;&quot;)
+levels(melted$variable) &lt;- c(&quot;16S&quot;,&quot;erm B&quot;,&quot;erm F&quot;,&quot;tet M&quot;)
+ggplot(sub ,(aes(x=as.factor(Week), y=value)))+geom_boxplot()+facet_grid(Tillage~variable)+scale_y_continuous(trans=&#39;log10&#39;)+theme_bw()+theme(axis.text.x = element_text(angle=90))+labs(x=&quot;Week&quot;,y=&quot;Log 10 gene copies&quot;)</code></pre>
+<pre><code>## Warning: Removed 532 rows containing non-finite values (stat_boxplot).</code></pre>
+<p><img src="visualization_files/figure-html/unnamed-chunk-5-1.png" width="672" /></p>
+<pre class="r"><code>sub &lt;- subset(sub, variable != &quot;16S&quot;)
+y = subset(sub, Tillage==&quot;NT&quot;)$value
+x = subset(sub, Tillage==&quot;CP&quot;)$value
+t.test(x,y) #p-value = 0.3034</code></pre>
+<pre><code>## 
+##  Welch Two Sample t-test
+## 
+## data:  x and y
+## t = -0.013244, df = 222.53, p-value = 0.9894
+## alternative hypothesis: true difference in means is not equal to 0
+## 95 percent confidence interval:
+##  -627.5513  619.1725
+## sample estimates:
+## mean of x mean of y 
+##  1536.613  1540.802</code></pre>
+<pre class="r"><code>compare_means(value ~ Tillage, data=sub)</code></pre>
+<pre><code>## # A tibble: 1 x 8
+##   .y.   group1 group2     p p.adj p.format p.signif method  
+##   &lt;chr&gt; &lt;chr&gt;  &lt;chr&gt;  &lt;dbl&gt; &lt;dbl&gt; &lt;chr&gt;    &lt;chr&gt;    &lt;chr&gt;   
+## 1 value CP     NT     0.380  0.38 0.38     ns       Wilcoxon</code></pre>
+<pre class="r"><code>my_comparisons &lt;- list( c(&quot;NT&quot;, &quot;CP&quot;))
+ggboxplot(sub, x=&quot;Tillage&quot;, y=&quot;value&quot;)+stat_compare_means(comparisons = my_comparisons)+scale_y_continuous(trans=&#39;log10&#39;)+labs(x=&quot;Manure Treatment&quot;,y=&quot;Log 10 gene copies&quot;)+stat_compare_means(label.y = 3.5)</code></pre>
+<pre><code>## Warning: Removed 532 rows containing non-finite values (stat_boxplot).</code></pre>
+<pre><code>## Warning: Removed 532 rows containing non-finite values (stat_signif).</code></pre>
+<pre><code>## Warning: Removed 532 rows containing non-finite values
+## (stat_compare_means).</code></pre>
+<p><img src="visualization_files/figure-html/unnamed-chunk-7-1.png" width="672" /></p>
 </div>
-<div id="calculate-count-using-standard-curve" class="section level3">
-<h3>Calculate count using standard curve</h3>
-<p>We are going to use data table only countains with 16S assay with it. Make mean since we run it triplicate.</p>
-<pre class="r"><code>casted &lt;- dcast(sub, Sample~Assay, fun=mean, value.var = &quot;Ct&quot;)</code></pre>
-<p>To understand which sample is which, add metadata.</p>
-<pre class="r"><code>merged_meta &lt;- merge(meta, casted, by.x = sample_id, by.y=&quot;Sample&quot;)</code></pre>
-<p>We are going to use linear model regression, but this time inverse x and y axis</p>
-<pre class="r"><code>inverse.lm &lt;- lm(count ~ ct)</code></pre>
-<p>Get Ct values</p>
-<pre class="r"><code>val = merged_meta[,name_target]</code></pre>
-<p>Using linear model, calculate count. then, save into column name “temp”</p>
-<pre class="r"><code>merged_meta$temp&lt;- 10^predict(inverse.lm ,data.frame(ct = val), interval = &quot;predict&quot;)[,1]</code></pre>
-<p>Change column name meaningful</p>
-<pre class="r"><code>names(merged_meta)[ncol(merged_meta)] &lt;- paste0(&quot;cal_&quot;, name_target)
-names(merged_meta)[ncol(merged_meta)-1] &lt;- paste0(&quot;mean_&quot;, name_target)</code></pre>
-<p>We can repeat this process into other target</p>
-</div>
+<div id="manure-treatment" class="section level3">
+<h3>Manure treatment</h3>
+<pre class="r"><code>ggplot(melted,(aes(x=as.factor(Week), y=value)))+geom_boxplot()+facet_grid(Manure.Treatment~variable)+scale_y_continuous(trans=&#39;log10&#39;)+theme_bw()+theme(axis.text.x = element_text(angle=90))+labs(x=&quot;Week&quot;,y=&quot;Log 10 gene copies&quot;)</code></pre>
+<pre><code>## Warning: Removed 1144 rows containing non-finite values (stat_boxplot).</code></pre>
+<p><img src="visualization_files/figure-html/unnamed-chunk-8-1.png" width="672" /></p>
+<pre class="r"><code>sub &lt;- subset(melted, variable != &quot;16S&quot;)
+
+y = subset(sub, Manure.Treatment == &quot;Control&quot;)$value
+x = subset(sub, Manure.Treatment == &quot;EFM&quot;)$value #p-value = 0.0643
+t.test(x,y)</code></pre>
+<pre><code>## 
+##  Welch Two Sample t-test
+## 
+## data:  x and y
+## t = 2.1637, df = 26.838, p-value = 0.03956
+## alternative hypothesis: true difference in means is not equal to 0
+## 95 percent confidence interval:
+##  0.08300272 3.14426584
+## sample estimates:
+## mean of x mean of y 
+##  3.843912  2.230278</code></pre>
+<pre class="r"><code>x = subset(sub, Manure.Treatment == &quot;LFM&quot;)$value #p-value = 0.0003764
+t.test(x,y)</code></pre>
+<pre><code>## 
+##  Welch Two Sample t-test
+## 
+## data:  x and y
+## t = 3.82, df = 32.706, p-value = 0.0005648
+## alternative hypothesis: true difference in means is not equal to 0
+## 95 percent confidence interval:
+##  1.400614 4.594870
+## sample estimates:
+## mean of x mean of y 
+##  5.228020  2.230278</code></pre>
+<pre class="r"><code>x = subset(sub, Manure.Treatment == &quot;SM&quot;)$value #p-value = 0.004758
+t.test(x,y)</code></pre>
+<pre><code>## 
+##  Welch Two Sample t-test
+## 
+## data:  x and y
+## t = 3.0679, df = 68.441, p-value = 0.003087
+## alternative hypothesis: true difference in means is not equal to 0
+## 95 percent confidence interval:
+##   9.487519 44.781993
+## sample estimates:
+## mean of x mean of y 
+## 29.365034  2.230278</code></pre>
+<pre class="r"><code>compare_means(value ~ Manure.Treatment, data=sub)</code></pre>
+<pre><code>## # A tibble: 6 x 8
+##   .y.   group1  group2         p    p.adj p.format p.signif method  
+##   &lt;chr&gt; &lt;chr&gt;   &lt;chr&gt;      &lt;dbl&gt;    &lt;dbl&gt; &lt;chr&gt;    &lt;chr&gt;    &lt;chr&gt;   
+## 1 value Control EFM    0.184     0.23     0.18435  ns       Wilcoxon
+## 2 value Control LFM    0.00892   0.027    0.00892  **       Wilcoxon
+## 3 value Control SM     0.000144  0.00072  0.00014  ***      Wilcoxon
+## 4 value EFM     LFM    0.116     0.23     0.11642  ns       Wilcoxon
+## 5 value EFM     SM     0.0000122 0.000073 1.2e-05  ****     Wilcoxon
+## 6 value LFM     SM     0.000165  0.00072  0.00016  ***      Wilcoxon</code></pre>
+<pre class="r"><code>my_comparisons &lt;- list( c(&quot;Control&quot;, &quot;EFM&quot;), c(&quot;Control&quot;, &quot;LFM&quot;), c(&quot;Control&quot;, &quot;SM&quot;))
+ggboxplot(sub, x=&quot;Manure.Treatment&quot;, y=&quot;value&quot;)+stat_compare_means(comparisons = my_comparisons)+scale_y_continuous(trans=&#39;log10&#39;)+labs(x=&quot;Manure Treatment&quot;,y=&quot;Log 10 gene copies&quot;)+stat_compare_means(label.y = 6.5)</code></pre>
+<pre><code>## Warning: Removed 1130 rows containing non-finite values (stat_boxplot).</code></pre>
+<pre><code>## Warning: Removed 1130 rows containing non-finite values (stat_signif).</code></pre>
+<pre><code>## Warning: Removed 1130 rows containing non-finite values
+## (stat_compare_means).</code></pre>
+<p><img src="visualization_files/figure-html/unnamed-chunk-10-1.png" width="672" /></p>
 </div>
 </div>
 

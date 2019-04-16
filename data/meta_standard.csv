@@ -1,0 +1,33 @@
+﻿Sample,Assay,count
+16s 0,16s,0
+16s 10*2,16s,1.25
+16s 10*3,16s,12.5
+16s 10*4,16s,125
+16s 10*5,16s,1250
+16s 10*6,16s,12500
+16s 10*7,16s,125000
+16s 10*8,16s,1250000
+ermB 0,erm B,0
+ermB 10*2,erm B,1.25
+ermB 10*3,erm B,12.5
+ermB 10*4,erm B,125
+ermB 10*5,erm B,1250
+ermB 10*6,erm B,12500
+ermB 10*7,erm B,125000
+ermB 10*8,erm B,1250000
+ermF 0,erm F,0
+ermF 10*2,erm F,1.25
+ermF 10*3,erm F,12.5
+ermF 10*4,erm F,125
+ermF 10*5,erm F,1250
+ermF 10*6,erm F,12500
+ermF 10*7,erm F,125000
+ermF 10*8,erm F,1250000
+tetM 0,tet M,0
+tetM 10*2,tet M,1.25
+tetM 10*3,tet M,12.5
+tetM 10*4,tet M,125
+tetM 10*5,tet M,1250
+tetM 10*6,tet M,12500
+tetM 10*7,tet M,125000
+tetM 10*8,tet M,1250000

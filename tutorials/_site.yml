@@ -7,6 +7,10 @@ navbar:
       href: index.html
     - text: "wafergen in R"
       href: wafergenR.html
+    - text: "Automation using function"
+      href: automation_using_function.html
+    - text: "Visualization"
+      href: visualization.html
       
 output:
   html_document:
