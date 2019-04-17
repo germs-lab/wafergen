@@ -16,5 +16,5 @@ It is critically important that your list match primer names in file from step #
 It will need 16 ul water with 2 ul of each F/R primers.
 
 ## Code used for this SOP
-[jin can you add it here so I know where it is please]
+You can find code here. https://github.com/germs-lab/wafergen
 
