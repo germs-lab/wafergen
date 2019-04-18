@@ -1,3 +1,7 @@
+# Wafergen analysis 
+This folder contains files related to Wafergen analysis and/or plate preparation.  There are X types of files, used for X, Y, and Z.
+
+
 # Python code for generating CSV file for robot
 For SOP, please see here https://github.com/germs-lab/SOPs/blob/master/Wafergen.md
 
