@@ -3,7 +3,7 @@ This folder contains files related to Wafergen analysis and/or plate preparation
 
 
 # Python code for generating CSV file for robot
-For SOP, please see here https://github.com/germs-lab/SOPs/blob/master/Wafergen.md
+For SOP, please see here https://github.com/germs-lab/SOPs/blob/master/wafergen_SOPs/wafergen-general.md
 
 ## If you use Bob's primer use command like this
 ```
