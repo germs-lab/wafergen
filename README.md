@@ -12,7 +12,7 @@ python prepare_primer_96S_54A.py 54assays_primer_list.csv full_primer_location.c
 ```
 
 # For analzing qPCR data
-## This detaled tutorial shows how to anlaze qPCR data using R
+## This detailed tutorial shows how to anlaze qPCR data using R
 http://germslab.org/wafergen/wafergenR.html
 
 
