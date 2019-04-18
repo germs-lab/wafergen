@@ -8,7 +8,7 @@ python prepare_bob_primer_144S_36A.py lan_list_target.txt bob_primer_plate.clean
 
 ### This is made for Nitrogen cycle gene
 ```
-python python wafergen/prepare_primer_96S_54A.py 54assays_primer_list.csv full_primer_location.csv 
+python prepare_primer_96S_54A.py 54assays_primer_list.csv full_primer_location.csv 
 ```
 
 # For analzing qPCR data
