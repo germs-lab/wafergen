@@ -5,10 +5,12 @@ output:
     toc: true
     toc_float: true
 ---
-
+#### Jin Choi, Apr 22, 2019
 
 # Wafergen analysis
 This tutorial shows how to analyze wafergen data. Wafergen data is nothing but bigger size of qPCR. So, let's start with qPCR data analisis.
+
+
 
 ## qPCR data analysis in R
 This section will show analyse qPCR data in R. It is environmental samples in the tutorial. Let's start with house-keeping gene(16S rRNA). 
@@ -153,4 +155,30 @@ names(merged_meta)[ncol(merged_meta)] <- paste0("cal_", name_target)
 names(merged_meta)[ncol(merged_meta)-1] <- paste0("mean_", name_target)
 ```
 We can repeat this process into other target
+
+
+#### Postscript
+If you want to make change on this tutorial, First clone the repository into your computer
+```
+git clone https://github.com/germs-lab/wafergen-analysis-tutorial.git
+```
+
+Second, Open in Rstudio and make change of the Rmd file in tutorials folder
+```
+wafergenR.Rmd
+automation_using_function.Rmd
+visualization.Rmd
+```
+Third, click "Knit", then this files in the docs folder will be chagned
+```
+wafergenR.html
+automation_using_function.html
+visualization.html
+```
+Last, push to the main repository
+```
+git add FILE_YOU_GENERATE
+git commit -m 'update'
+git push
+```
 

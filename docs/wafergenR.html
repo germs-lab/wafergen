@@ -412,6 +412,9 @@ div.tocify {
 </div>
 
 
+<div id="jin-choi-apr-22-2019" class="section level4">
+<h4>Jin Choi, Apr 22, 2019</h4>
+</div>
 <div id="wafergen-analysis" class="section level1">
 <h1>Wafergen analysis</h1>
 <p>This tutorial shows how to analyze wafergen data. Wafergen data is nothing but bigger size of qPCR. So, let’s start with qPCR data analisis.</p>
@@ -514,6 +517,23 @@ ggplot(table_for_ggplot, aes(x= count, y=ct))+geom_point()+geom_smooth(method=&#
 <pre class="r"><code>names(merged_meta)[ncol(merged_meta)] &lt;- paste0(&quot;cal_&quot;, name_target)
 names(merged_meta)[ncol(merged_meta)-1] &lt;- paste0(&quot;mean_&quot;, name_target)</code></pre>
 <p>We can repeat this process into other target</p>
+<div id="postscript" class="section level4">
+<h4>Postscript</h4>
+<p>If you want to make change on this tutorial, First clone the repository into your computer</p>
+<pre><code>git clone https://github.com/germs-lab/wafergen-analysis-tutorial.git</code></pre>
+<p>Second, Open in Rstudio and make change of the Rmd file in tutorials folder</p>
+<pre><code>wafergenR.Rmd
+automation_using_function.Rmd
+visualization.Rmd</code></pre>
+<p>Third, click “Knit”, then this files in the docs folder will be chagned</p>
+<pre><code>wafergenR.html
+automation_using_function.html
+visualization.html</code></pre>
+<p>Last, push to the main repository</p>
+<pre><code>git add FILE_YOU_GENERATE
+git commit -m &#39;update&#39;
+git push</code></pre>
+</div>
 </div>
 </div>
 </div>
